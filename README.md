@@ -17,6 +17,9 @@
 
 ### The Four TCP/IP Layers
 
+<img width="563" height="310" alt="image" src="https://github.com/user-attachments/assets/aa07edb3-8669-4a45-86fe-27500b700d8e" />
+
+
 | TCP/IP Layer | Function |
 |---|---|
 | **Application** | Provides the interface and protocols applications use to communicate — for our scenario, HTTP/HTTPS (with TLS) and DNS. It formats the request and interprets the response. |
