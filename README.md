@@ -26,6 +26,9 @@
 
 ### Mapping TCP/IP to OSI (7 Layers)
 
+<img width="647" height="346" alt="image" src="https://github.com/user-attachments/assets/a7e8abb0-36e0-4f34-b929-286dbc660e0c" />
+
+
 | OSI Layer | TCP/IP Layer | Role in this scenario |
 |---|---|---|
 | 7. Application | Application | The browser generates the HTTP request (e.g., `GET / HTTP/1.1`) for the web page. |
