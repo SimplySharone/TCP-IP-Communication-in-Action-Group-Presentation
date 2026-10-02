@@ -211,80 +211,129 @@ A user reports: **"I can't open `https://www.example.com` — the page just time
 - Document the change and the cause for future reference.
 
 ---
+## 7. Slide Outline (19 Slides)
 
-## 7. Slide Outline (12 Content Slides)
+The final deck contains a title slide, 17 content slides (including 5 lab-evidence slides built from our Wireshark and terminal captures) and a references slide.
 
-**Slide 1 — Scenario Overview and Objectives**
+**Slide 1 — Title**
+- How Data Travels Across a Network
+- A TCP/IP and OSI walkthrough of opening a secure website (HTTPS)
+- Presenters and roles
+*Speaker note: Introduce the group and the topic in one or two sentences, and explain that the talk follows one HTTPS request from the moment the URL is typed to the moment the page loads.*
+
+**Slide 2 — Scenario Overview and Objectives**
 - Scenario: Opening a secure website (HTTPS) from a laptop to an Internet web server
-- Objective: Trace how data travels using the TCP/IP model, mapped to OSI
-- What the audience will learn: encapsulation, addressing, protocols, troubleshooting
-*Speaker note: Introduce the scenario in one sentence, state that the presentation will follow a single HTTPS request from click to page-load, and preview the four main parts of the talk (model, journey, protocols, troubleshooting).*
+- Journey at a glance: laptop/browser → Wi-Fi access point → switch → router (NAT + firewall) → Internet (ISP routers) → web server (`203.0.113.10`)
+- Objectives: trace data with the TCP/IP model mapped to OSI, show encapsulation and decapsulation, identify protocols, addresses and ports, and diagnose a realistic failure
+*Speaker note: State the scenario in one sentence, preview the four parts of the talk (model, journey, protocols, troubleshooting) and mention that real lab captures back up each step.*
 
-**Slide 2 — TCP/IP Model Overview**
-- Application, Transport, Internet, Network Access layers
+**Slide 3 — TCP/IP Model: Four Layers**
+- Application, Transport, Internet, Network Access
 - One-line function of each layer
-- Applied to HTTPS: browser (App), TCP (Transport), IP (Internet), Ethernet/Wi-Fi (Network Access)
-*Speaker note: Walk through the four layers top to bottom, giving a concrete example from the HTTPS scenario for each one so it isn't abstract.*
+- Applied to HTTPS: browser (Application), TCP (Transport), IP (Internet), Ethernet/Wi-Fi (Network Access)
+*Speaker note: Walk through the four layers top to bottom, giving a concrete HTTPS example for each so the model isn't abstract.*
 
-**Slide 3 — OSI Model and Mapping to TCP/IP**
-- 7 OSI layers listed
-- Mapping table: which OSI layers combine into each TCP/IP layer
-- Key point: Presentation and Session are folded into TCP/IP's Application layer
-*Speaker note: Emphasize that OSI is more granular and mainly used as a teaching/reference model, while TCP/IP is what's actually implemented on the Internet.*
+**Slide 4 — OSI Model and Mapping to TCP/IP**
+- 7 OSI layers listed with their TCP/IP equivalents and their role in this scenario
+- Key point: Application, Presentation and Session all fold into TCP/IP's Application layer; Data Link and Physical fold into Network Access
+- Note: Presentation and Session are not separate layers in TCP/IP
+*Speaker note: Emphasize that OSI is a more granular teaching and reference model, while TCP/IP is what is actually implemented on the Internet.*
 
-**Slide 4 — Packet Journey: DNS Resolution**
-- Browser needs an IP for the domain name
-- DNS query sent over UDP port 53
-- Response: IP address returned (`203.0.113.10`)
-*Speaker note: Explain that before any web traffic happens, the device must resolve the human-readable domain name into an IP address, and this uses UDP because it's a small, fast exchange.*
+**Slide 5 — Packet Journey: DNS Resolution**
+- Browser needs an IP address for the domain name
+- DNS query sent over UDP to port 53, possibly forwarded to an upstream resolver
+- Response returns the IP address; UDP is used because the exchange is small and can simply be retried
+- DNS query encapsulation: message → UDP datagram → IP packet → Ethernet/Wi-Fi frame
+*Speaker note: Explain that before any web traffic flows, the device must turn the human-readable name into an IP address, and that UDP suits this small, fast exchange.*
 
-**Slide 5 — Packet Journey: Connection Setup (TCP + TLS)**
-- TCP three-way handshake (SYN, SYN-ACK, ACK)
-- TLS handshake: certificate validation, key exchange
-- Result: secure, reliable channel established
-*Speaker note: Describe these as two separate handshakes stacked on top of each other — TCP guarantees reliable delivery, TLS guarantees confidentiality and authentication.*
+**Slide 6 — Lab Evidence: DNS Lookup in Practice**
+- Terminal: `nslookup wikipedia.org` against DNS server `10.0.2.3` (port 53) returns `195.200.68.224` (IPv4) and `2a02:ec80:700:ed1a::1` (IPv6)
+- Wireshark `dns` filter: two queries (A and AAAA) and two responses between `10.0.2.15` and `10.0.2.3`
+- First query is 73 bytes on the wire, sent over UDP
+*Speaker note: Point at the nslookup output first, then at the Wireshark list, showing that one lookup actually produces an A query and an AAAA query.*
 
-**Slide 6 — Packet Journey: Encapsulation of the Request**
+**Slide 7 — Packet Journey: Connection Setup (TCP + TLS)**
+- TCP three-way handshake: SYN, SYN-ACK, ACK
+- TLS handshake on top of TCP: ClientHello, ServerHello and certificate, key exchange
+- Result: a reliable, secure and authenticated channel to port 443
+*Speaker note: Describe these as two separate handshakes stacked on each other — TCP guarantees reliable delivery, TLS guarantees confidentiality and authentication.*
+
+**Slide 8 — Lab Evidence: TCP Handshake and TLS in Wireshark**
+- `tcp.port == 443` capture: SYN, SYN-ACK and ACK between `10.0.2.15` (port 50992) and `151.101.129.91` (port 443)
+- TLS 1.3 Client Hello (SNI `ads.mozilla.org`), then Change Cipher Spec
+- After the handshake, the payload appears only as encrypted Application Data
+- Note: this capture is a Firefox connection to ads.mozilla.org; the handshake sequence is identical for any HTTPS site, including Wikipedia
+*Speaker note: Walk down the Info column line by line, and stress that once the handshake finishes nothing readable remains in the packets.*
+
+**Slide 9 — Packet Journey: Encapsulation of the Request**
 - HTTP request → TLS encrypted → TCP segment → IP packet → Ethernet/Wi-Fi frame
-- Show PDU names at each layer
-- Addressing added at each layer (ports, IPs, MACs)
-*Speaker note: Walk through each encapsulation step in order, pointing out what gets added at each layer and using the PDU name at each stage.*
+- PDU names at each layer: Data, Segment, Packet, Frame
+- Addressing added at each layer: ports, IP addresses, MAC addresses
+*Speaker note: Walk through each encapsulation step in order, pointing out what is added at each layer and naming the PDU at each stage.*
 
-**Slide 7 — Packet Journey: Across the Network and Back**
+**Slide 10 — Lab Evidence: Encapsulation in a Real Packet**
+- Ethernet II header (source and destination MAC) wrapping the IPv4 header (`10.0.2.15` → `10.0.2.3`, protocol 17 = UDP, TTL 64)
+- UDP header (port 40486 → 53) wrapping the DNS standard query (transaction ID `0x1c67`)
+- Wireshark's protocol nesting: `eth:ethertype:ip:udp:dns`
+*Speaker note: Use the two screenshots to show the layers literally nested inside one another, from the frame down to the DNS message.*
+
+**Slide 11 — Packet Journey: Across the Network and Back**
 - Local network: AP → switch → router (NAT + firewall)
-- Internet: multiple ISP/backbone routers, MAC changes each hop, IP stays the same
+- Internet: multiple ISP/backbone routers; MAC changes at each hop while the IP stays the same
 - Response follows the reverse path back to the laptop
-*Speaker note: Stress that IP addresses stay constant end-to-end (aside from NAT) while MAC addresses change at every router hop — this is the most important concept on this slide.*
+*Speaker note: Stress that IP addresses stay constant end to end (aside from NAT) while MAC addresses change at every router hop — this is the most important concept of the section.*
 
-**Slide 8 — Packet Journey Diagram (Explained)**
-- Show the diagram (devices, arrows, layer labels)
-- Highlight where encapsulation/decapsulation occurs
-- Highlight address changes along the path
-*Speaker note: Talk the audience through the diagram left to right, following the request arrow out and the response arrow back, pointing at each device as you describe what happens there.*
+**Slide 12 — Lab Evidence: MAC Changes, IP Stays the Same**
+- Reply packet from `151.101.129.91` (the web server) to `10.0.2.15` (the laptop), TCP port 443 → 50992
+- Ethernet source MAC `52:55:0a:00:02:02` is the local gateway, flagged as a locally administered address, not the server's own MAC
+- The earlier DNS query used a different destination MAC, showing the Layer 2 address depends on the next hop
+*Speaker note: Contrast the IP header, which names the real endpoints, with the Ethernet header, which only names the next hop.*
 
-**Slide 9 — Protocol Analysis Table**
-- Show the 4-layer protocol table (protocol, PDU, addressing, purpose)
-- Brief explanation of why each protocol was chosen
-*Speaker note: Don't read the whole table aloud — pick two or three rows (e.g., TCP and IP) and explain them in more depth as examples.*
+**Slide 13 — Packet Journey Diagram (Explained)**
+- Diagram of devices, request and response arrows, and layer labels
+- Highlights where encapsulation and decapsulation occur (laptop and web server)
+- Highlights address changes along the path
+*Speaker note: Talk the audience through the diagram left to right, following the request out and the response back, pointing at each device as you describe what it does.*
 
-**Slide 10 — TCP vs UDP Comparison**
-- Key differences: connection-oriented vs connectionless, reliability, overhead
+**Slide 14 — Lab Evidence: The Page Loads**
+- Browser shows `https://www.wikipedia.org` with the padlock icon
+- DNS, TCP and TLS all completed before the first byte of the page arrived
+- Journey complete: Application → Transport → Internet → Network Access outbound, reversed on the way back
+*Speaker note: Close the packet journey by showing the end result, and tie it back to the earlier captures.*
+
+**Slide 15 — Protocol Analysis Table**
+- 4-layer protocol table (protocol, PDU, addressing, purpose)
+- Application: HTTP/HTTPS (TLS), DNS; Transport: TCP and UDP; Internet: IPv4; Network Access: Ethernet, Wi-Fi, ARP
+- Brief explanation of why each protocol is used
+*Speaker note: Don't read the whole table aloud — pick two or three rows (for example TCP and IP) and explain them in depth as examples.*
+
+**Slide 16 — TCP vs UDP Comparison**
+- Key differences: connection-oriented vs connectionless, reliability, ordering, overhead
 - TCP examples: HTTPS, email
-- UDP examples: DNS, VoIP/video streaming
-*Speaker note: Explain why HTTPS specifically needs TCP's reliability, then contrast with DNS's use of UDP for speed, to make the comparison concrete rather than abstract.*
+- UDP examples: DNS, VoIP and video conferencing
+*Speaker note: Explain why HTTPS needs TCP's reliability, then contrast with DNS's use of UDP for speed, so the comparison feels concrete.*
 
-**Slide 11 — Communication Failure Scenario**
-- Problem: user can't reach the website (times out), other sites work fine
-- Root cause (revealed at end): firewall rule blocking outbound TCP 443 to that server
+**Slide 17 — Communication Failure Scenario**
+- Problem: user cannot reach `https://www.example.com`; the page times out while other sites work fine
+- Symptoms: only one site fails, no certificate warning, so the connection never completes
+- Root cause (revealed at the end): a firewall rule change blocking outbound TCP 443 to that server's IP range
 *Speaker note: Present this like a mini mystery — describe the symptom first, then let the next slide show how it was diagnosed.*
 
-**Slide 12 — Troubleshooting Steps**
-- Flow: check connectivity → check DNS → check ports (TCP 443) → check devices/firewall logs → identify cause → fix → confirm
-- Fix: firewall rule corrected; connection restored
-*Speaker note: Walk through the troubleshooting flow as a logical, repeatable process the audience could apply to other problems, not just this one specific case.*
+**Slide 18 — Troubleshooting Steps**
+- Flow: define the problem → check connectivity (ping the default gateway) → verify DNS (`nslookup`) → check the port (`Test-NetConnection` to TCP 443) → inspect devices and firewall logs → fix → confirm
+- Fix: add an allow rule for outbound TCP 443; connection restored
+*Speaker note: Walk through the flow as a logical, repeatable process that works up the layers and applies to other problems, not just this one.*
+
+**Slide 19 — References**
+- IETF RFC 9110 (HTTP Semantics) and RFC 9293 (TCP)
+- Cisco Networking Academy course materials
+- CompTIA Network+ study guide
+- Microsoft Learn: TCP/IP protocol architecture
+*Speaker note: Thank the audience, summarize in one sentence that every page load passes through four layers and is wrapped and unwrapped at each hop, and invite questions.*
 
 ---
 
+---
 ## 8. References
 
 1. **RFC 9110 – HTTP Semantics** (Internet Engineering Task Force, IETF) — the official standard defining HTTP.
